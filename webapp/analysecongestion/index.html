@@ -1,0 +1,254 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Analyse de la congestion</title>
+	<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+	<link rel="stylesheet" href="../libs/leaflet-0.7/leaflet.css" />
+	<!--<link rel="stylesheet" href="../libs/jquery-ui-1.10.3.custom/css/ui-lightness/jquery-ui-1.10.3.custom.min.css" />-->
+	<link rel="stylesheet" href="../libs/jquery-ui-1.10.3.custom/css/base/jquery.ui.all.css" />
+	<link rel="stylesheet" href="../libs/bootstrap.css" />
+	<!--link href="toolbar.css" rel="stylesheet"-->
+    	<link rel="stylesheet" href="../libs/sidebar-v2-gh-pages/css/leaflet-sidebar.css" />
+	
+	<script src="configuration.js"></script>
+	<script src="../libs/leaflet-0.7/leaflet.js"></script>
+	<script src="../libs/leaflet-plugins-master/layer/vector/KML.js"></script>
+	<script src="../libs/jquery-1.9.1.min.js"></script>
+	<script src="leafletUtil.js"></script>
+	<script src="../libs/jquery-ui-1.10.3.custom/js/jquery-ui-1.10.3.custom.min.js"></script>
+	<script src="../libs/bootstrap-modal.js"></script>
+	<script src="../libs/jquery.moment.js"></script>
+	<script src="../libs/jquery.livestamp.js"></script>
+	<script src="../libs/jquery.timer.js"></script>
+        <script src="../libs/sidebar-v2-gh-pages/js/leaflet-sidebar.js"></script>
+
+	<style>
+		body {
+			padding: 0;
+			margin: 0;
+		}
+		html, body, #map {
+			height: 100%;
+		}
+		#actions {
+			position : absolute;
+			top: 10px;
+			left: 50px;
+			z-index:100;
+		}
+	        #output {
+			position: absolute;
+			bottom: 10px;
+			right: 10px;
+			padding: 10px;
+			background: #fff;
+			z-index: 100;
+		}
+		.hidden-dialog   { display: none; }
+	</style>	
+</head>
+<body>
+
+<div id="sidebar" class="sidebar collapsed">
+        <!-- Nav tabs -->
+        <ul class="sidebar-tabs" role="tablist">
+            <li><a href="#home" role="tab"><i class="fa fa-bars"><img src="search-32.png"></i></a></li>
+        </ul>
+
+        <!-- Tab panes -->
+        <div class="sidebar-content active">
+            <div class="sidebar-pane" id="home">
+                <h2>Analyse de la congestion</h2>
+
+		<label>Journée: </label>
+		<select id="select-day" onchange="search()">
+		  <option value="0">Dimanche</option>
+		  <option value="1" selected="selected">Lundi</option>
+		  <option value="2">Mardi</option>
+		  <option value="3">Mercredi</option>
+		  <option value="4">Jeudi</option>
+		  <option value="5">Vendredi</option>
+		  <option value="6">Samedi</option>
+		</select>
+		
+		<label>Sens de la circulation: </label>
+		<select id="select-orientation" onchange="search()">
+		  <option value="N">Nord</option>
+		  <option value="S" selected="selected">Sud</option>
+		  <option value="E">Est</option>
+		  <option value="O">Ouest</option>
+		</select>
+
+		<label>Période: </label>
+		<select id="select-time" onchange="search()">
+		  <option value="1">1:00 - 1:30</option>
+		  <option value="1.5">1:30 - 2:00</option>
+		  <option value="2">2:00 - 2:30</option>
+		  <option value="2.5">2:30 - 3:00</option>
+		  <option value="3">3:00 - 3:30</option>
+		  <option value="3.5">3:30 - 4:00</option>
+		  <option value="4">4:00 - 4:30</option>
+		  <option value="4.5">4:30 - 5:00</option>
+		  <option value="5" selected="selected">5:00 - 5:30</option>
+		  <option value="5.5">5:30 - 6:00</option>
+		  <option value="6">6:00 - 6:30</option>
+		  <option value="6.5">6:30 - 7:00</option>
+		  <option value="7">7:00 - 7:30</option>
+		  <option value="7.5">7:30 - 8:00</option>
+		  <option value="8">8:00 - 8:30</option>
+		  <option value="8.5">8:30 - 9:00</option>
+		  <option value="9">9:00 - 9:30</option>
+		  <option value="9.5">9:30 - 10:00</option>
+		  <option value="10">10:00 - 10:30</option>
+		  <option value="10.5">10:30 - 11:00</option>
+		  <option value="11">11:00 - 11:30</option>
+		  <option value="11.5">11:30 - 12:00</option>
+		  <option value="12">12:00 - 12:30</option>
+		  <option value="12.5">12:30 - 1:00</option>
+		</select>
+		<select id="select-time-period" onchange="search()">
+		  <option value="am">AM</option>
+		  <option value="pm" selected="selected">PM</option>
+		</select>
+		<br>
+		<button id="search" onclick="search(true)">Soumettre</button>
+            </div>
+	    
+        </div>
+    </div>
+
+	<div id="map" class="sidebar-map"></div>
+
+	<script>
+		var map = L.map('map', {});
+
+		map.setView(Configuration.MAP_DEFAULT_VIEW,Configuration.MAP_DEFAULT_ZOOM);
+
+		//Create background map layer
+		var basemap = L.tileLayer(Configuration.MAP_BACKGROUND_LAYER, {
+			maxZoom: Configuration.MAP_BACKGROUND_LAYER_MAX_ZOOM,
+			attribution: Configuration.MAP_BACKGROUND_LAYER_ATTRIBUTION,
+			tms: Configuration.MAP_BACKGROUND_LAYER_TMS
+		}).addTo(map);
+
+		var quebec = L.tileLayer.wms('../cgi-bin/mapserv/?map=/var/www/services/maps/quebec.map',
+				{
+				layers:'default',
+				format:'image/png',
+				transparent: true,
+				opacity: .5
+				});	
+
+
+
+		var resultsLayer = L.geoJson(null, {
+		    style: function(feature) {
+			var ratio = (feature.properties.vitesse / feature.properties.limite);
+			var style; 
+
+			if (ratio > 1.1) {
+				style =  {color: "#3ADF00", "weight" : 8, opacity: 0.9};
+			} else if (ratio >= 1) {
+				style =  {color: "#0B610B", "weight" : 8, opacity: 0.9};
+			} else if (ratio > 0.9) {
+				style =  {color: "#F7FE2E", "weight" : 8, opacity: 0.9};
+			} else if (ratio > 0.4) {
+				style =  {color: "#FFE000", "weight" : 8, opacity: 0.9};
+			} else {
+				style =  {color: "#FF0000", "weight" : 8, opacity: 0.9};
+			}
+
+			return style;
+		    }});
+		resultsLayer.addTo(map);
+
+		var basemaps = {"osm": basemap};
+		var overlays = {
+			"Quebec" : quebec,
+			"Résultats" : resultsLayer
+		};
+		L.control.layers(basemaps, overlays).addTo(map);
+
+        	var sidebar = L.control.sidebar('sidebar').addTo(map);
+
+		setTimeout(function () {
+		    sidebar.open('home');
+		}, 500);
+
+		function search(fromButton){
+			console.log("search()");
+			var day = document.getElementById("select-day").value;
+			var orientation = document.getElementById("select-orientation").value;
+			var time = document.getElementById("select-time").value;
+			var period = document.getElementById("select-time-period").value;
+
+			console.log("day = " + day);
+			console.log("orientation = " + orientation);
+
+			var hour = Math.floor(time);
+			var halfhour = 0;
+
+			if (time > Math.floor(hour)) {
+			    halfhour = 1;
+			}
+
+			if (period == "pm") {
+                            hour += 12;
+			}
+			if (hour == 24){
+			    hour = 0;
+			}
+			
+			var bbox = map.getBounds().toBBoxString();
+
+			console.log("hour = " + hour);
+			console.log("halfhour = " + halfhour);
+			console.log("bbox = " + bbox);
+
+var urlKv = Configuration.WEB_SERVICE_URL + "?request=search&day="+day+"&orientation="+orientation+"&hour="+hour+"&halfhour="+halfhour+"&bbox="+bbox;
+
+			console.log("urlKv = " + urlKv);
+
+			$.ajax({
+				type:"POST",
+				url:urlKv,
+				success:function(data){
+					success(data); 
+				},
+				error:function(){error()},
+				dataType:"json"
+			});
+
+if (fromButton) {
+		setTimeout(function () {
+		    sidebar.close();
+		}, 500);
+}
+		}
+
+		function success(data){
+			console.log("success()");
+			
+			// TODO:
+			/*var testData = {type:"FeatureCollection",features:[{type:"Feature",geometry:{type:"LineString",coordinates:[[-71.6381568020065,46.5391085830651],[-71.6373665561753,46.5398510520482],[-71.6363104363754,46.5406365201946],[-71.6355418158544,46.5412009575543]]},properties:{vitesse:51.6, limite:100}}]};*/
+			
+			resultsLayer.clearLayers(); // inherited from LayerGroup
+
+if (data.features.length > 0) {
+
+			resultsLayer.addData(data);
+} else {
+alert("Aucune donnée disponible pour ces paramètres.");
+}
+		}
+		function error(){
+			console.log("error()");
+alert("Une erreur s'est produite lors de la requête.");
+		}
+	</script>
+</body>
+
+</html>
