@@ -24,7 +24,7 @@ Données ouvertes:
  - Couverture OSM du Québec: http://download.geofabrik.de/north-america/canada/quebec-latest.osm.pbf
  - Données MonTrajet: http://donnees.ville.quebec.qc.ca/Handler.ashx?id=76&f=JSON
   
- Procédure:
+Procédure:
  - Installer les logiciels
  - Utiliser imposm afin de charger les données OSM dans la base de donnée PostGIS
  - Utiliser OGR afin de charger les données de MonTrajet
