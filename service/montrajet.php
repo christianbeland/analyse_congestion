@@ -13,11 +13,11 @@ $halfhour = $_GET['halfhour'];
 
 //$sql = "select *, st_asgeojson(st_transform(geometry,4326)) as g from montrajet_result;";
 //http://localhost/montrajet.php?orientation=N&day=0&hour=6&halfhour=0
-$sql = "select *,st_asgeojson(st_transform(geometry,4326)) as g from montrajet_result_24au8_v inner join osm_new_roads on osm_new_roads.osm_id=montrajet_result_24au8_v.osm_id where dayofweek={$dayofweek} and hour={$hour} and demiheure={$halfhour} and direction='{$orientation}';";
+$sql = "select *,st_asgeojson(st_transform(osm_new_roads.geometry,4326)) as g from montrajet_result12au18 inner join osm_new_roads on osm_new_roads.osm_id=montrajet_result12au18.osm_id where dayofweek={$dayofweek} and hour={$hour} and demiheure={$halfhour} and direction='{$orientation}';";
 
 error_log($sql);
 
-$dbconn = pg_connect("host=localhost port=5432 dbname=osm user=postgres password=postgres");
+$dbconn = pg_connect("host=localhost port=5432 dbname=osm user=osm password=osm");
 $result = pg_query($dbconn, $sql);
 if (!$result) {
   echo "An error occurred.\n";
